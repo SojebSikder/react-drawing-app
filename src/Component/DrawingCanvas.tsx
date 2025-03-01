@@ -12,6 +12,7 @@ const DrawingCanvas: React.FC = () => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isEraser, setIsEraser] = useState<boolean>(false);
   const socket = useRef<Socket | null>(null);
+  const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null);
 
   const updateCanvasSize = () => {
     if (canvasRef.current) {
@@ -28,14 +29,33 @@ const DrawingCanvas: React.FC = () => {
       console.log("Connected to server");
     });
 
+    // Listen for draw start event
+    socket.current.on("drawStart", (data) => {
+      if (ctx) {
+        ctx.beginPath();
+        ctx.moveTo(data.x, data.y);
+      }
+    });
     // Listen for draw events from other clients
-    socket.current.on("draw", (data: any) => {
-      if (ctx && canvasRef.current) {
+    // socket.current.on("draw", (data: any) => {
+    //   if (ctx && canvasRef.current) {
+    //     ctx.beginPath();
+    //     ctx.moveTo(data.x, data.y);
+    //     ctx.lineTo(data.x2, data.y2);
+    //     ctx.strokeStyle = data.color;
+    //     ctx.lineWidth = data.lineWidth;
+    //     ctx.stroke();
+    //   }
+    // });
+    socket.current.on("draw", (data) => {
+      if (ctx) {
+        ctx.strokeStyle = data.color;
+        ctx.lineWidth = data.lineWidth;
+        ctx.lineCap = "round";
+
         ctx.beginPath();
         ctx.moveTo(data.x, data.y);
         ctx.lineTo(data.x2, data.y2);
-        ctx.strokeStyle = data.color;
-        ctx.lineWidth = data.lineWidth;
         ctx.stroke();
       }
     });
@@ -109,44 +129,73 @@ const DrawingCanvas: React.FC = () => {
       setIsDrawing(true);
       ctx.beginPath();
       ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+
+      // Store last position
+      setLastPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
       // Emit the initial point to other clients
-      socket.current?.emit("draw", {
+      // Emit start event
+      socket.current?.emit("drawStart", {
         x: e.nativeEvent.offsetX,
         y: e.nativeEvent.offsetY,
-        x2: e.nativeEvent.offsetX,
-        y2: e.nativeEvent.offsetY,
         color,
         lineWidth,
       });
+      // socket.current?.emit("draw", {
+      //   x: e.nativeEvent.offsetX,
+      //   y: e.nativeEvent.offsetY,
+      //   x2: e.nativeEvent.offsetX,
+      //   y2: e.nativeEvent.offsetY,
+      //   color,
+      //   lineWidth,
+      // });
     },
     [ctx, color, lineWidth]
   );
 
   const draw = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!isDrawing || !ctx) return;
+      if (!isDrawing || !ctx || !lastPos) return;
+
       ctx.lineWidth = lineWidth;
       ctx.strokeStyle = isEraser ? "#fff" : color;
+      ctx.lineCap = "round";
 
+      ctx.beginPath();
+      ctx.moveTo(lastPos.x, lastPos.y);
       ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
       ctx.stroke();
       // Emit the drawing event to other clients
+      // socket.current?.emit("draw", {
+      //   x: e.nativeEvent.offsetX,
+      //   y: e.nativeEvent.offsetY,
+      //   x2: e.nativeEvent.offsetX,
+      //   y2: e.nativeEvent.offsetY,
+      //   color,
+      //   lineWidth,
+      // });
+      // Emit smoother drawing data
       socket.current?.emit("draw", {
-        x: e.nativeEvent.offsetX,
-        y: e.nativeEvent.offsetY,
+        x: lastPos.x,
+        y: lastPos.y,
         x2: e.nativeEvent.offsetX,
         y2: e.nativeEvent.offsetY,
         color,
         lineWidth,
       });
+      // Update last position
+      setLastPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
     },
-    [isDrawing, ctx, color, lineWidth, isEraser]
+    [isDrawing, ctx, color, lineWidth, isEraser, lastPos]
   );
 
   const stopDrawing = useCallback(() => {
     if (!ctx) return;
     setIsDrawing(false);
+    setLastPos(null);
     ctx.closePath();
+
+    // Emit end of drawing
+    socket.current?.emit("drawEnd");
   }, [ctx]);
 
   const clearCanvas = () => {
