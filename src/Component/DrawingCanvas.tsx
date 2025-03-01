@@ -9,17 +9,29 @@ const DrawingCanvas: React.FC = () => {
   const [history, setHistory] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
 
-  useEffect(() => {
+  const updateCanvasSize = () => {
     if (canvasRef.current) {
       const canvas = canvasRef.current;
       canvas.width = window.innerWidth * 0.8; // Responsive width
       canvas.height = window.innerHeight * 0.6; // Responsive height
-      const context = canvas.getContext("2d");
+    }
+  };
+
+  useEffect(() => {
+    updateCanvasSize();
+    if (canvasRef.current) {
+      const context = canvasRef.current.getContext("2d");
       if (context) {
         context.lineCap = "round";
         setCtx(context);
       }
     }
+
+    // Update canvas size on window resize
+    window.addEventListener("resize", updateCanvasSize);
+    return () => {
+      window.removeEventListener("resize", updateCanvasSize);
+    };
   }, []);
 
   const saveState = () => {
