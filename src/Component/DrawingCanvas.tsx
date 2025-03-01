@@ -9,6 +9,7 @@ const DrawingCanvas: React.FC = () => {
   const [history, setHistory] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [isEraser, setIsEraser] = useState<boolean>(false);
 
   const updateCanvasSize = () => {
     if (canvasRef.current) {
@@ -89,12 +90,13 @@ const DrawingCanvas: React.FC = () => {
   const draw = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (!isDrawing || !ctx) return;
-      ctx.strokeStyle = color;
       ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = isEraser ? "#fff" : color;
+
       ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
       ctx.stroke();
     },
-    [isDrawing, ctx, color, lineWidth]
+    [isDrawing, ctx, color, lineWidth, isEraser]
   );
 
   const stopDrawing = useCallback(() => {
@@ -118,7 +120,6 @@ const DrawingCanvas: React.FC = () => {
     link.click();
   };
 
-  // Function to handle image file selection
   const handleImageInsert = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -139,6 +140,17 @@ const DrawingCanvas: React.FC = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  // Set cursor styles based on the current operation
+  useEffect(() => {
+    if (canvasRef.current) {
+      if (isDrawing || isEraser) {
+        canvasRef.current.style.cursor = "crosshair";
+      } else {
+        canvasRef.current.style.cursor = "default";
+      }
+    }
+  }, [isDrawing, isEraser]);
 
   return (
     <div className="flex flex-col items-center p-4">
@@ -172,6 +184,12 @@ const DrawingCanvas: React.FC = () => {
             className="ml-2"
           />
         </label>
+        <button
+          onClick={() => setIsEraser((prev) => !prev)}
+          className={`p-2 ${isEraser ? "bg-red-500" : "bg-gray-500"} text-white rounded`}
+        >
+          {isEraser ? "Disable Eraser" : "Enable Eraser"}
+        </button>
       </div>
       <canvas
         ref={canvasRef}
