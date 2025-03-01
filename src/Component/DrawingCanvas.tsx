@@ -108,6 +108,15 @@ const DrawingCanvas: React.FC = () => {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
   };
 
+  const saveImage = () => {
+    if (!canvasRef.current) return;
+    const imageUrl = canvasRef.current.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = "drawing.png";
+    link.click();
+  };
+
   return (
     <div className="flex flex-col items-center p-4">
       <div className="flex space-x-4 mb-4">
@@ -152,6 +161,12 @@ const DrawingCanvas: React.FC = () => {
           className="p-2 bg-red-500 text-white rounded"
         >
           Clear
+        </button>
+        <button
+          onClick={saveImage}
+          className="p-2 bg-yellow-500 text-white rounded"
+        >
+          Save Image
         </button>
       </div>
     </div>
