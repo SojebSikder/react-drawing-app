@@ -8,6 +8,7 @@ const DrawingCanvas: React.FC = () => {
   const [lineWidth, setLineWidth] = useState<number>(2);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   const updateCanvasSize = () => {
     if (canvasRef.current) {
@@ -117,6 +118,28 @@ const DrawingCanvas: React.FC = () => {
     link.click();
   };
 
+  // Function to handle image file selection
+  const handleImageInsert = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const img = new Image();
+          img.onload = () => {
+            setImage(img);
+            if (ctx && canvasRef.current) {
+              // Draw the image onto the canvas
+              ctx.drawImage(img, 0, 0, canvasRef.current.width, canvasRef.current.height);
+            }
+          };
+          img.src = event.target.result as string;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center p-4">
       <div className="flex space-x-4 mb-4">
@@ -137,6 +160,15 @@ const DrawingCanvas: React.FC = () => {
             max="10"
             value={lineWidth}
             onChange={(e) => setLineWidth(Number(e.target.value))}
+            className="ml-2"
+          />
+        </label>
+        <label>
+          Insert Image:
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageInsert}
             className="ml-2"
           />
         </label>
