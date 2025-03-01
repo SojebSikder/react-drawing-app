@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import { io, Socket } from "socket.io-client";
 
 const DrawingCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -10,6 +11,7 @@ const DrawingCanvas: React.FC = () => {
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isEraser, setIsEraser] = useState<boolean>(false);
+  const socket = useRef<Socket | null>(null);
 
   const updateCanvasSize = () => {
     if (canvasRef.current) {
@@ -18,6 +20,30 @@ const DrawingCanvas: React.FC = () => {
       canvas.height = window.innerHeight * 0.6; // Responsive height
     }
   };
+
+  useEffect(() => {
+    socket.current = io("http://localhost:3000"); // Server URL
+
+    socket.current.on("connect", () => {
+      console.log("Connected to server");
+    });
+
+    // Listen for draw events from other clients
+    socket.current.on("draw", (data: any) => {
+      if (ctx && canvasRef.current) {
+        ctx.beginPath();
+        ctx.moveTo(data.x, data.y);
+        ctx.lineTo(data.x2, data.y2);
+        ctx.strokeStyle = data.color;
+        ctx.lineWidth = data.lineWidth;
+        ctx.stroke();
+      }
+    });
+
+    return () => {
+      socket.current?.disconnect();
+    };
+  }, [ctx]);
 
   useEffect(() => {
     updateCanvasSize();
@@ -83,8 +109,17 @@ const DrawingCanvas: React.FC = () => {
       setIsDrawing(true);
       ctx.beginPath();
       ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+      // Emit the initial point to other clients
+      socket.current?.emit("draw", {
+        x: e.nativeEvent.offsetX,
+        y: e.nativeEvent.offsetY,
+        x2: e.nativeEvent.offsetX,
+        y2: e.nativeEvent.offsetY,
+        color,
+        lineWidth,
+      });
     },
-    [ctx]
+    [ctx, color, lineWidth]
   );
 
   const draw = useCallback(
@@ -95,6 +130,15 @@ const DrawingCanvas: React.FC = () => {
 
       ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
       ctx.stroke();
+      // Emit the drawing event to other clients
+      socket.current?.emit("draw", {
+        x: e.nativeEvent.offsetX,
+        y: e.nativeEvent.offsetY,
+        x2: e.nativeEvent.offsetX,
+        y2: e.nativeEvent.offsetY,
+        color,
+        lineWidth,
+      });
     },
     [isDrawing, ctx, color, lineWidth, isEraser]
   );
@@ -131,7 +175,13 @@ const DrawingCanvas: React.FC = () => {
             setImage(img);
             if (ctx && canvasRef.current) {
               // Draw the image onto the canvas
-              ctx.drawImage(img, 0, 0, canvasRef.current.width, canvasRef.current.height);
+              ctx.drawImage(
+                img,
+                0,
+                0,
+                canvasRef.current.width,
+                canvasRef.current.height
+              );
             }
           };
           img.src = event.target.result as string;
@@ -186,7 +236,9 @@ const DrawingCanvas: React.FC = () => {
         </label>
         <button
           onClick={() => setIsEraser((prev) => !prev)}
-          className={`p-2 ${isEraser ? "bg-red-500" : "bg-gray-500"} text-white rounded`}
+          className={`p-2 ${
+            isEraser ? "bg-red-500" : "bg-gray-500"
+          } text-white rounded`}
         >
           {isEraser ? "Disable Eraser" : "Enable Eraser"}
         </button>
