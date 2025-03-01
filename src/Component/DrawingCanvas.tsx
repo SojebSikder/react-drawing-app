@@ -14,11 +14,32 @@ const DrawingCanvas: React.FC = () => {
   const socket = useRef<Socket | null>(null);
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null);
 
+  // const updateCanvasSize = () => {
+  //   if (canvasRef.current) {
+  //     const canvas = canvasRef.current;
+  //     canvas.width = window.innerWidth * 0.8; // Responsive width
+  //     canvas.height = window.innerHeight * 0.6; // Responsive height
+  //   }
+  // };
   const updateCanvasSize = () => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      canvas.width = window.innerWidth * 0.8; // Responsive width
-      canvas.height = window.innerHeight * 0.6; // Responsive height
+    if (!canvasRef.current || !ctx) return;
+
+    // Save current canvas content
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvasRef.current.width;
+    tempCanvas.height = canvasRef.current.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (tempCtx) {
+      tempCtx.drawImage(canvasRef.current, 0, 0);
+    }
+
+    // Resize the canvas
+    canvasRef.current.width = window.innerWidth * 0.8;
+    canvasRef.current.height = window.innerHeight * 0.6;
+
+    // Restore the saved content
+    if (tempCtx) {
+      ctx.drawImage(tempCanvas, 0, 0);
     }
   };
 
