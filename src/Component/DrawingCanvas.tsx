@@ -37,16 +37,6 @@ const DrawingCanvas: React.FC = () => {
       }
     });
     // Listen for draw events from other clients
-    // socket.current.on("draw", (data: any) => {
-    //   if (ctx && canvasRef.current) {
-    //     ctx.beginPath();
-    //     ctx.moveTo(data.x, data.y);
-    //     ctx.lineTo(data.x2, data.y2);
-    //     ctx.strokeStyle = data.color;
-    //     ctx.lineWidth = data.lineWidth;
-    //     ctx.stroke();
-    //   }
-    // });
     socket.current.on("draw", (data) => {
       if (ctx) {
         ctx.strokeStyle = data.color;
@@ -132,7 +122,6 @@ const DrawingCanvas: React.FC = () => {
 
       // Store last position
       setLastPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
-      // Emit the initial point to other clients
       // Emit start event
       socket.current?.emit("drawStart", {
         x: e.nativeEvent.offsetX,
@@ -140,14 +129,6 @@ const DrawingCanvas: React.FC = () => {
         color,
         lineWidth,
       });
-      // socket.current?.emit("draw", {
-      //   x: e.nativeEvent.offsetX,
-      //   y: e.nativeEvent.offsetY,
-      //   x2: e.nativeEvent.offsetX,
-      //   y2: e.nativeEvent.offsetY,
-      //   color,
-      //   lineWidth,
-      // });
     },
     [ctx, color, lineWidth]
   );
@@ -164,15 +145,6 @@ const DrawingCanvas: React.FC = () => {
       ctx.moveTo(lastPos.x, lastPos.y);
       ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
       ctx.stroke();
-      // Emit the drawing event to other clients
-      // socket.current?.emit("draw", {
-      //   x: e.nativeEvent.offsetX,
-      //   y: e.nativeEvent.offsetY,
-      //   x2: e.nativeEvent.offsetX,
-      //   y2: e.nativeEvent.offsetY,
-      //   color,
-      //   lineWidth,
-      // });
       // Emit smoother drawing data
       socket.current?.emit("draw", {
         x: lastPos.x,

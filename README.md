@@ -1,6 +1,8 @@
 # Description
 
-React drawing app
+Realtime collaboration drawing app
+
+Backend repository: https://github.com/SojebSikder/nodejs-drawing-app-backend
 
 # Screenshots
 ![](./screenshots/screenshot_1.png)
